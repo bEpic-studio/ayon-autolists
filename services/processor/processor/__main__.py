@@ -4,6 +4,8 @@ from time import sleep
 import ayon_api
 from socket import gethostname
 
+from datetime import datetime, timedelta
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,28 +14,67 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def handle_new_version_event(event, addon_settings):
+def handle_new_version_event(version, project, addon_settings):
     # get added version
+
     # if not matching filters skip and mark event as finished
     # for list_filter in addon_settings["filters"]:
     #     print(f"Applying filter: {list_filter}")
 
+    # get version variant
+    # get version task
+    version_task = ayon_api.get_task_by_id(project["name"], version["taskId"])
+    logger.info(f"{version_task = }")
+
+    profile_to_use = None
+    for idx, profile in enumerate(
+        [setts["filter_profile"] for setts in addon_settings["list_settings"]]
+    ):
+        logger.info(f"{profile = }")
+        if version_task["taskType"] in profile["task_types"]:
+            profile_to_use = addon_settings["list_settings"][idx]
+            break
+    if not profile_to_use:
+        logger.info("No matching profile found for version. Skipping.")
+        return
+
+    logger.info(f"Using profile: {profile_to_use}")
+
     # get event_time
-    # if after 8pm consider next day
     # how to do settings for that?
+    version_created_at = datetime.fromisoformat(version["createdAt"])
+    date_created = version_created_at.date()
+    logger.info(f"{version_created_at = }")
+    if version_created_at.hour >= 20:  # if after 8pm consider next day
+        date_created = (version_created_at + timedelta(days=1)).date()
+
+    logger.info(f"{date_created = }")
 
     # format playlist name from settings template
+    # place playlist in folder Auto-Lists/Filter Name
+    list_folder_name = profile_to_use["name"]
+    list_name = f"{date_created} - Auto List"
 
     # ensure event_playlist is present
-    # place playlist in folder Auto-Lists/Filter Name
+    entity_list = None
+    for existing_list in ayon_api.get_entity_lists(project["name"]):
+        if existing_list["label"] == list_name:
+            entity_list = existing_list
+            break
+    if not entity_list:
+        entity_list = ayon_api.create_entity_list(project["name"], "version", label=list_name)
+    
+    logger.info(f"{entity_list = }")
+
 
     # add versions to playlist
+    ayon_api.update_entity_list_items(project["name"], entity_list["id"], [version], mode="merge")
 
-
-    logger.info("Handling new version event: %s", event)
+    logger.info("Handling new version event: %s", version)
     # Simulate processing time
     sleep(2)
     logger.info("Finished processing new version event.")
+
 
 class AutoListsProcessor:
     def __init__(self):
@@ -49,34 +90,50 @@ class AutoListsProcessor:
                 source_topic="entity.version.created",  # maybe rather reviewable.created
                 target_topic="autolists.process",
                 description="Process new version for autolists",
-                sender=gethostname()
+                sender=gethostname(),
             )
             if not target_event:
-                logger.warning(
-                    "Failed to enroll event job. Retrying in 5 seconds..."
-                )
+                logger.warning("Failed to enroll event job. Retrying in 5 seconds...")
                 sleep(5)
                 continue
 
             target_event = ayon_api.get_event(target_event["id"])
             source_event = ayon_api.get_event(target_event["dependsOn"])
+
             project = ayon_api.get_project(source_event["project"])
             if not project:
                 errmsg = f"Project '{source_event['project']}' not found."
                 raise RuntimeError(errmsg)
-
             ayon_api.update_event(
                 target_event["id"],
                 project_name=project["name"],
             )
+            # logger.info(f"{project = }")
+
+            version = ayon_api.get_version_by_id(
+                project["name"],
+                source_event["summary"]["entityId"],
+                fields=["taskId", "createdAt"],
+            )
+            version["entityId"] = version["id"] # ayon_api wants entityId for adding a version to an entity list, but get_version_by_id returns id, so i copy it over
+            if not version:
+                errmsg = f"Version with ID '{source_event['summary']['entityId']}' not found in project '{project['name']}'."
+                raise RuntimeError(errmsg)
+            logger.info(f"{version = }")
+            # 2026-04-22 10:56:22,533 INFO [__main__] version = {'data': {}, 'tags': [], 'productId': 'e32465643e3911f1a0f716cc399bfb9b', 'status': 'Pending review', 'createdAt': '2026-04-22T12:56:17.0026-04-22T12:56:17.336462+02:00', 'allAttrib': '{}', 'id': 'e32a8fb63e3911f1a0f716cc399bfb9b', 'attrib': {}}
 
             try:
                 self.settings = ayon_api.get_service_addon_settings()
+                # self.settings = {'enabled': True, 'list_settings': [{'name': 'playlist_parent_folder_name', 'schedule': 'daily', 'filter_profile': {'variants': ['Main'], 'task_types': ['Comp']}}]}
                 logger.info("Loaded service settings.")
-                logger.debug("Service settings: %s", self.settings)
                 logger.info(f"{target_event = }")
                 logger.info(f"{source_event = }")
-                handle_new_version_event(target_event, self.settings)
+                logger.info(f"{self.settings = }")
+                handle_new_version_event(
+                    version,
+                    project,
+                    self.settings,
+                )
             except Exception as e:
                 logger.exception("Error processing event: %s", e)
                 ayon_api.update_event(
