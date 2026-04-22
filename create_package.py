@@ -47,7 +47,6 @@ with open(PACKAGE_PATH, "r") as stream:
 ADDON_VERSION = package_content["version"]
 ADDON_NAME = package_content["name"]
 ADDON_TITLE = package_content["title"]
-ADDON_CLIENT_DIR = package_content["client_dir"]
 CLIENT_VERSION_CONTENT = '''# -*- coding: utf-8 -*-
 """Package declaring {0} addon version."""
 __version__ = "{1}"
@@ -261,38 +260,6 @@ def _update_client_version(client_addon_dir):
         stream.write(CLIENT_VERSION_CONTENT.format(ADDON_TITLE, ADDON_VERSION))
 
 
-def zip_client_side(addon_package_dir, current_dir, log):
-    """Copy and zip `client` content into 'addon_package_dir'.
-
-    Args:
-        addon_package_dir (str): Output package directory path.
-        current_dir (str): Directory path of addon source.
-        log (logging.Logger): Logger object.
-    """
-
-    client_dir = os.path.join(current_dir, "client")
-    client_addon_dir = os.path.join(client_dir, ADDON_CLIENT_DIR)
-    if not os.path.isdir(client_addon_dir):
-        raise ValueError(f"Failed to find client directory '{client_addon_dir}'")
-
-    log.info("Preparing client code zip")
-    private_dir = os.path.join(addon_package_dir, "private")
-
-    if not os.path.exists(private_dir):
-        os.makedirs(private_dir)
-
-    _update_client_version(client_addon_dir)
-
-    zip_filepath = os.path.join(os.path.join(private_dir, "client.zip"))
-    with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        # Add client code content to zip
-        for path, sub_path in find_files_in_subdir(client_addon_dir):
-            sub_path = os.path.join(ADDON_CLIENT_DIR, sub_path)
-            zipf.write(path, sub_path)
-
-    shutil.copy(os.path.join(client_dir, "pyproject.toml"), private_dir)
-
-
 def create_server_package(output_dir: str, addon_output_dir: str, log: logging.Logger):
     """Create server package zip file.
 
@@ -358,7 +325,6 @@ def main(
     safe_copy_file(
         PACKAGE_PATH, os.path.join(addon_output_dir, os.path.basename(PACKAGE_PATH))
     )
-    zip_client_side(addon_output_dir, current_dir, log)
 
     # Skip server zipping
     if not skip_zip:
