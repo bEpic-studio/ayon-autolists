@@ -21,24 +21,18 @@ from ayon_server.settings import (
 
 
 class FilterProfileSettings(BaseSettingsModel):
-    product_name: str = SettingsField(
-        default="",
-        title="Product name filter"
-    )
-    product_type: str = SettingsField(
-        default="",
-        title="Product type filter",
-        # enum_resolver=task_types_enum
-    )
-    statuses: list[str] = SettingsField(
+    # product_name: str = SettingsField(
+    #     default="",
+    #     title="Product name filter"
+    # )
+    variants: list[str] = SettingsField(  # should be variant
         default_factory=list,
-        title="Statuses filter",
-        enum_resolver=task_types_enum
+        title="Variant filter",
     )
-    folder_path: str = SettingsField(
-        default="",
-        title="Folder path filter"
-    )
+    # folder_path: str = SettingsField(
+    #     default="",
+    #     title="Folder path filter"
+    # )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types filter",
