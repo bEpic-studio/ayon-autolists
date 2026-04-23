@@ -97,6 +97,16 @@ class AutoListsProcessor:
                 project_name=project["name"],
             )
 
+            self.settings = ayon_api.get_service_addon_settings(project["name"])
+            if not self.settings["enabled"]:
+                logger.info("Service is disabled in settings. Marking event as finished and skipping.")
+                ayon_api.update_event(
+                    target_event["id"],
+                    description="Service is disabled in settings. Skipping.",
+                    status="finished",
+                )
+                continue
+
             version = ayon_api.get_version_by_id(
                 project["name"],
                 source_event["summary"]["entityId"],
@@ -109,7 +119,6 @@ class AutoListsProcessor:
             # 2026-04-22 10:56:22,533 INFO [__main__] version = {'data': {}, 'tags': [], 'productId': 'e32465643e3911f1a0f716cc399bfb9b', 'status': 'Pending review', 'createdAt': '2026-04-22T12:56:17.0026-04-22T12:56:17.336462+02:00', 'allAttrib': '{}', 'id': 'e32a8fb63e3911f1a0f716cc399bfb9b', 'attrib': {}}
 
             try:
-                self.settings = ayon_api.get_service_addon_settings()
                 # self.settings = {'enabled': True, 'list_settings': [{'name': 'playlist_parent_folder_name', 'schedule': 'daily', 'filter_profile': {'variants': ['Main'], 'task_types': ['Comp']}}]}
                 logger.info("Loaded service settings.")
                 logger.info(f"{target_event = }")
