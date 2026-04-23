@@ -5,15 +5,15 @@ from ayon_server.settings import (
 
 
 class ListProfileSettings(BaseSettingsModel):
-    name: str = SettingsField(default="", label="List Name")    
-    schedule: str = SettingsField(
-        default="daily",
-        label="Schedule",
-        enum_resolver=lambda: ["daily", "weekly"],
+    list_folder_name: str = SettingsField(
+        default="",
+        label="List Folder Name",
+        description="CURRENTLY NOT IMPLEMENTED! Name of the folder to place the list in. Can be used to group lists. E.g. 'Auto-Lists/Filter Name'",
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
-        title="Product name filter",
+        label="Product name filter",
+        description="List of product names to filter versions by. Only versions matching these product names will be included in the list.",
     )
 
 
