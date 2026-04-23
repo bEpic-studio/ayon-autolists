@@ -40,10 +40,12 @@ def handle_new_version_event(version, project, addon_settings):
     # how to do settings for that? --> cutOff time
     version_created_at = datetime.fromisoformat(version["createdAt"])
     date_created = version_created_at.date()
-    logger.info(f"{version_created_at = }")
     if version_created_at.hour >= 20:  # if after 8pm consider next day
         date_created = (version_created_at + timedelta(days=1)).date()
+    if date_created.weekday() >= 5:  # if weekend consider next monday
+        date_created += timedelta(days=(7 - date_created.weekday()))
 
+    logger.info(f"{version_created_at = }")
     logger.info(f"{date_created = }")
 
     # format playlist name from settings template
