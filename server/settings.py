@@ -5,6 +5,11 @@ from ayon_server.settings import (
 
 
 class ListProfileSettings(BaseSettingsModel):
+    name: str = SettingsField(
+        default="",
+        label="List Name Template",
+        description="Only used for naming this settings item. No Logic.",
+    )
     list_folder_name: str = SettingsField(
         default="",
         label="List Folder Name",
@@ -15,10 +20,21 @@ class ListProfileSettings(BaseSettingsModel):
         label="Product name filter",
         description="List of product names to filter versions by. Only versions matching these product names will be included in the list.",
     )
+    cutoff_hour: int = SettingsField(
+        default=20,
+        label="Cutoff Hour",
+        description="Hour of the day (0-23) to use as cutoff for determining the date in the list name. Versions created after this hour will be considered as created on the next day.",
+    )
+    combine_weekend: bool = SettingsField(
+        default=True,
+        label="Combine Weekend",
+        description="Whether to combine versions created on weekends. If false, versions created on Saturday or Sunday will be considered as created on the following Monday.",
+    )
 
 
 class AutoListsSettings(BaseSettingsModel):
     """Settings for most standalone in-house tools"""
+
     enabled: bool = SettingsField(default=False, label="Enabled")
     list_settings: list[ListProfileSettings] = SettingsField(default=[])
 
