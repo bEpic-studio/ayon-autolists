@@ -16,32 +16,28 @@ logger = logging.getLogger(__name__)
 
 def handle_new_version_event(version, project, addon_settings):
     # get added version
+    version["entityId"] = version["id"] # ayon_api wants entityId for adding a version to an entity list, but get_version_by_id returns id, so i copy it over
+    version["product"] = ayon_api.get_product_by_id(project["name"], version["productId"])
+
 
     # if not matching filters skip and mark event as finished
-    # for list_filter in addon_settings["filters"]:
-    #     print(f"Applying filter: {list_filter}")
-
-    # get version variant
-    # get version task
-    version_task = ayon_api.get_task_by_id(project["name"], version["taskId"])
-    logger.info(f"{version_task = }")
-
     profile_to_use = None
     for idx, profile in enumerate(
         [setts["filter_profile"] for setts in addon_settings["list_settings"]]
     ):
         logger.info(f"{profile = }")
-        if version_task["taskType"] in profile["task_types"]:
-            profile_to_use = addon_settings["list_settings"][idx]
-            break
+        # iterate productNames and glob against version name
+        for product_name_filter in profile["product_names"]:
+            if version["product"]["name"] == product_name_filter:
+                profile_to_use = addon_settings["list_settings"][idx]
+                break
     if not profile_to_use:
         logger.info("No matching profile found for version. Skipping.")
         return
-
     logger.info(f"Using profile: {profile_to_use}")
 
     # get event_time
-    # how to do settings for that?
+    # how to do settings for that? --> cutOff time
     version_created_at = datetime.fromisoformat(version["createdAt"])
     date_created = version_created_at.date()
     logger.info(f"{version_created_at = }")
@@ -63,17 +59,9 @@ def handle_new_version_event(version, project, addon_settings):
             break
     if not entity_list:
         entity_list = ayon_api.create_entity_list(project["name"], "version", label=list_name)
-    
-    logger.info(f"{entity_list = }")
-
 
     # add versions to playlist
     ayon_api.update_entity_list_items(project["name"], entity_list["id"], [version], mode="merge")
-
-    logger.info("Handling new version event: %s", version)
-    # Simulate processing time
-    sleep(2)
-    logger.info("Finished processing new version event.")
 
 
 class AutoListsProcessor:
@@ -108,14 +96,12 @@ class AutoListsProcessor:
                 target_event["id"],
                 project_name=project["name"],
             )
-            # logger.info(f"{project = }")
 
             version = ayon_api.get_version_by_id(
                 project["name"],
                 source_event["summary"]["entityId"],
-                fields=["taskId", "createdAt"],
+                fields=["taskId", "createdAt", "productId"],
             )
-            version["entityId"] = version["id"] # ayon_api wants entityId for adding a version to an entity list, but get_version_by_id returns id, so i copy it over
             if not version:
                 errmsg = f"Version with ID '{source_event['summary']['entityId']}' not found in project '{project['name']}'."
                 raise RuntimeError(errmsg)
