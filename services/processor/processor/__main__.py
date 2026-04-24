@@ -58,9 +58,14 @@ def handle_new_version_event(version, project, addon_settings):
             break
     if not entity_list:
         entity_list = ayon_api.create_entity_list(project["name"], "version", label=list_name)
+    logger.info(f"{entity_list = }")
 
     # add versions to playlist
-    ayon_api.update_entity_list_items(project["name"], entity_list["id"], [version], mode="merge")
+    if isinstance(entity_list, str):
+        entity_list_id = entity_list
+    else:
+        entity_list_id = entity_list["id"]
+    ayon_api.update_entity_list_items(project["name"], entity_list_id, [version], mode="merge")
 
 
 class AutoListsProcessor:
