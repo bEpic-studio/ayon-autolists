@@ -22,9 +22,7 @@ def handle_new_version_event(version, project, addon_settings):
 
     # if not matching filters skip and mark event as finished
     profile_to_use = None
-    for idx, profile in enumerate(
-        [setts["filter_profile"] for setts in addon_settings["list_settings"]]
-    ):
+    for idx, profile in enumerate(addon_settings["list_settings"]):
         logger.info(f"{profile = }")
         # iterate productNames and glob against version name
         for product_name_filter in profile["product_names"]:
