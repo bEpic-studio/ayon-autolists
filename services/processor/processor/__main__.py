@@ -47,8 +47,8 @@ def handle_new_version_event(version, project, addon_settings):
 
     # format playlist name from settings template
     # place playlist in folder Auto-Lists/Filter Name
-    list_folder_name = profile_to_use["name"]
-    list_name = f"{date_created} - Auto List"
+    list_folder_name = profile_to_use["list_folder_name"]
+    list_name = f"{date_created} - {profile_to_use['name']}"
 
     # ensure event_playlist is present
     entity_list = None
