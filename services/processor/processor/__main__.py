@@ -21,51 +21,56 @@ def handle_new_version_event(version, project, addon_settings):
 
 
     # if not matching filters skip and mark event as finished
-    profile_to_use = None
+    profiles_to_use = []
     for idx, profile in enumerate(addon_settings["list_settings"]):
         logger.info(f"{profile = }")
         # iterate productNames and glob against version name
         for product_name_filter in profile["product_names"]:
             if version["product"]["name"] == product_name_filter:
-                profile_to_use = addon_settings["list_settings"][idx]
-                break
-    if not profile_to_use:
+                profiles_to_use.append(addon_settings["list_settings"][idx])
+    if not profiles_to_use:
         logger.info("No matching profile found for version. Skipping.")
         return
-    logger.info(f"Using profile: {profile_to_use}")
 
     # get event_time
-    version_created_at = datetime.fromisoformat(version["createdAt"])
-    date_created = version_created_at.date()
-    if version_created_at.hour >= profile_to_use["cutoff_hour"]:  # if after cutoff hour consider next day
-        date_created = (version_created_at + timedelta(days=1)).date()
-    if profile_to_use["combine_weekend"] and date_created.weekday() >= 5:  # if weekend consider next monday
-        date_created += timedelta(days=(7 - date_created.weekday()))
+    for profile_to_use in profiles_to_use:
+        logger.info(f"Processing profile: {profile_to_use}")
+        version_created_at = datetime.fromisoformat(version["createdAt"])
+        date_created = version_created_at.date()
+        if version_created_at.hour >= profile_to_use["cutoff_hour"]:  # if after cutoff hour consider next day
+            date_created = (version_created_at + timedelta(days=1)).date()
+        if profile_to_use["combine_weekend"] and date_created.weekday() >= 5:  # if weekend consider next monday
+            date_created += timedelta(days=(7 - date_created.weekday()))
 
-    logger.info(f"{version_created_at = }")
-    logger.info(f"{date_created = }")
+        # format playlist name from settings template
+        # place playlist in folder Auto-Lists/Filter Name
+        list_folder_name = profile_to_use["list_folder_name"]
+        list_name = f"{date_created} - {profile_to_use['name']}"
 
-    # format playlist name from settings template
-    # place playlist in folder Auto-Lists/Filter Name
-    list_folder_name = profile_to_use["list_folder_name"]
-    list_name = f"{date_created} - {profile_to_use['name']}"
+        # ensure event_playlist is present
+        entity_list = None
+        for existing_list in ayon_api.get_entity_lists(project["name"]):
+            if existing_list["label"] == list_name:
+                entity_list = existing_list
+                break
+        if not entity_list:
+            entity_list = ayon_api.create_entity_list(project["name"], "version", label=list_name)
 
-    # ensure event_playlist is present
-    entity_list = None
-    for existing_list in ayon_api.get_entity_lists(project["name"]):
-        if existing_list["label"] == list_name:
-            entity_list = existing_list
-            break
-    if not entity_list:
-        entity_list = ayon_api.create_entity_list(project["name"], "version", label=list_name)
-    logger.info(f"{entity_list = }")
+        # add versions to playlist
+        if isinstance(entity_list, str):
+            entity_list_id = entity_list
+        else:
+            entity_list_id = entity_list["id"]
 
-    # add versions to playlist
-    if isinstance(entity_list, str):
-        entity_list_id = entity_list
-    else:
-        entity_list_id = entity_list["id"]
-    ayon_api.update_entity_list_items(project["name"], entity_list_id, [version], mode="merge")
+        # i don't know why i can't use the ayon_api function.
+        # after item was added to 1 list it'll be removed afterwards
+        # the "normal" post works fine
+        # ayon_api.update_entity_list_items(project["name"], entity_list_id, [version], mode="merge")
+        ayon_api.post(
+            f"/projects/{project['name']}/lists/{entity_list_id}/items",
+            entityId=version["entityId"],
+        )
+        logger.info(f"Added version '{version['id']}' to list '{list_name}' (ID: {entity_list_id}).")
 
 
 class AutoListsProcessor:
