@@ -11,7 +11,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def handle_new_version_event(version, project, addon_settings):
@@ -23,18 +23,18 @@ def handle_new_version_event(version, project, addon_settings):
     # if not matching filters skip and mark event as finished
     profiles_to_use = []
     for idx, profile in enumerate(addon_settings["list_settings"]):
-        logger.info(f"{profile = }")
+        log.info(f"{profile = }")
         # iterate productNames and glob against version name
         for product_name_filter in profile["product_names"]:
             if version["product"]["name"] == product_name_filter:
                 profiles_to_use.append(addon_settings["list_settings"][idx])
     if not profiles_to_use:
-        logger.info("No matching profile found for version. Skipping.")
+        log.info("No matching profile found for version. Skipping.")
         return
 
     # get event_time
     for profile_to_use in profiles_to_use:
-        logger.info(f"Processing profile: {profile_to_use}")
+        log.info(f"Processing profile: {profile_to_use}")
         version_created_at = datetime.fromisoformat(version["createdAt"])
         date_created = version_created_at.date()
         if version_created_at.hour >= profile_to_use["cutoff_hour"]:  # if after cutoff hour consider next day
@@ -70,7 +70,7 @@ def handle_new_version_event(version, project, addon_settings):
             f"/projects/{project['name']}/lists/{entity_list_id}/items",
             entityId=version["entityId"],
         )
-        logger.info(f"Added version '{version['id']}' to list '{list_name}' (ID: {entity_list_id}).")
+        log.info(f"Added version '{version['id']}' to list '{list_name}' (ID: {entity_list_id}).")
 
 
 class AutoListsProcessor:
@@ -79,8 +79,8 @@ class AutoListsProcessor:
         self.svc_name = ayon_api.get_service_name()
 
     def start_processing(self):
-        logger.info("Starting AutoLists Processor...")
-        logger.debug("ayon_api module: %s", ayon_api)
+        log.info("Starting AutoLists Processor...")
+        log.debug("ayon_api module: %s", ayon_api)
 
         while True:
             target_event = ayon_api.enroll_event_job(
@@ -90,7 +90,7 @@ class AutoListsProcessor:
                 sender=gethostname(),
             )
             if not target_event:
-                logger.warning("Failed to enroll event job. Retrying in 5 seconds...")
+                log.warning("Failed to enroll event job. Retrying in 5 seconds...")
                 sleep(5)
                 continue
 
@@ -108,7 +108,7 @@ class AutoListsProcessor:
 
             self.settings = ayon_api.get_service_addon_settings(project["name"])
             if not self.settings["enabled"]:
-                logger.info("Service is disabled in settings. Marking event as finished and skipping.")
+                log.info("Service is disabled in settings. Marking event as finished and skipping.")
                 ayon_api.update_event(
                     target_event["id"],
                     description="Service is disabled in settings. Skipping.",
@@ -124,29 +124,29 @@ class AutoListsProcessor:
             if not version:
                 errmsg = f"Version with ID '{source_event['summary']['entityId']}' not found in project '{project['name']}'."
                 raise RuntimeError(errmsg)
-            logger.info(f"{version = }")
+            log.info(f"{version = }")
             # 2026-04-22 10:56:22,533 INFO [__main__] version = {'data': {}, 'tags': [], 'productId': 'e32465643e3911f1a0f716cc399bfb9b', 'status': 'Pending review', 'createdAt': '2026-04-22T12:56:17.0026-04-22T12:56:17.336462+02:00', 'allAttrib': '{}', 'id': 'e32a8fb63e3911f1a0f716cc399bfb9b', 'attrib': {}}
 
             try:
                 # self.settings = {'enabled': True, 'list_settings': [{'name': 'playlist_parent_folder_name', 'schedule': 'daily', 'filter_profile': {'variants': ['Main'], 'task_types': ['Comp']}}]}
-                logger.info("Loaded service settings.")
-                logger.info(f"{target_event = }")
-                logger.info(f"{source_event = }")
-                logger.info(f"{self.settings = }")
+                log.info("Loaded service settings.")
+                log.info(f"{target_event = }")
+                log.info(f"{source_event = }")
+                log.info(f"{self.settings = }")
                 handle_new_version_event(
                     version,
                     project,
                     self.settings,
                 )
             except Exception as e:
-                logger.exception("Error processing event: %s", e)
+                log.exception("Error processing event: %s", e)
                 ayon_api.update_event(
                     target_event["id"],
                     description=f"{e}",
                     status="failed",
                 )
             else:
-                logger.info("Event processed successfully.")
+                log.info("Event processed successfully.")
                 success_msg = "Event processed successfully."
                 ayon_api.update_event(
                     target_event["id"],
