@@ -1,6 +1,6 @@
 name = "autolists"
 title = "Auto Lists"
-version = "0.0.1"
+version = "0.0.2-dev"
 
 services = {
     "AutoListsProcessor": {"image": f"bepic/ayon-autolists-processor:{version}"},
