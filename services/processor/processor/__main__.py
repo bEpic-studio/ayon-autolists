@@ -80,7 +80,6 @@ class AutoListsProcessor:
 
     def start_processing(self):
         log.info("Starting AutoLists Processor...")
-        log.debug("ayon_api module: %s", ayon_api)
 
         while True:
             target_event = ayon_api.enroll_event_job(
@@ -124,15 +123,8 @@ class AutoListsProcessor:
             if not version:
                 errmsg = f"Version with ID '{source_event['summary']['entityId']}' not found in project '{project['name']}'."
                 raise RuntimeError(errmsg)
-            log.info(f"{version = }")
-            # 2026-04-22 10:56:22,533 INFO [__main__] version = {'data': {}, 'tags': [], 'productId': 'e32465643e3911f1a0f716cc399bfb9b', 'status': 'Pending review', 'createdAt': '2026-04-22T12:56:17.0026-04-22T12:56:17.336462+02:00', 'allAttrib': '{}', 'id': 'e32a8fb63e3911f1a0f716cc399bfb9b', 'attrib': {}}
 
             try:
-                # self.settings = {'enabled': True, 'list_settings': [{'name': 'playlist_parent_folder_name', 'schedule': 'daily', 'filter_profile': {'variants': ['Main'], 'task_types': ['Comp']}}]}
-                log.info("Loaded service settings.")
-                log.info(f"{target_event = }")
-                log.info(f"{source_event = }")
-                log.info(f"{self.settings = }")
                 handle_new_version_event(
                     version,
                     project,
