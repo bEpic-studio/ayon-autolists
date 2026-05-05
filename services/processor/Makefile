@@ -13,5 +13,10 @@ clean:
 		docker rmi $(IMAGE); \
 	fi
 
+push:
+	if docker images "$(IMAGE)"; then \
+		docker push $(IMAGE); \
+	fi
+
 clean-build: clean
 	docker build --no-cache -t $(IMAGE) .
