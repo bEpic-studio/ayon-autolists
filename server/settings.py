@@ -7,13 +7,14 @@ from ayon_server.settings import (
 class ListProfileSettings(BaseSettingsModel):
     name: str = SettingsField(
         default="",
-        label="List Name Template",
-        description="Only used for naming this settings item. No Logic.",
+        title="List Name",
+        description="Name of the list to be created. Will be auto-appended with `{YYYY}-{MM}-{DD}_`.",
     )
     list_folder_name: str = SettingsField(
         default="",
-        label="List Folder Name",
-        description="CURRENTLY NOT IMPLEMENTED! Name of the folder to place the list in. Can be used to group lists. E.g. 'Auto-Lists/Filter Name'",
+        title="List Folder Name",
+        description="Currently not implemented as it depends on ayon-powerpack. Name of the folder to place the list in. Can be used to group lists, e.g. 'Auto-Lists/Filter Name'.",
+        disabled=True,
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
